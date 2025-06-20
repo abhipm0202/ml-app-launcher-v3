@@ -1,0 +1,12 @@
+streamlit
+pandas
+numpy
+matplotlib
+scikit-learn
+seaborn
+openpyxl
+joblib
+Pillow
+
+torch==2.2.1
+torchvision==0.17.1
