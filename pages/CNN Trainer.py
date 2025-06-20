@@ -2,5 +2,12 @@ import cnn_gui
 import streamlit as st
 
 st.sidebar.title("📥 Sample Data")
-with open("sample_data/cnn_sample.zip", "rb") as f:
-    st.sidebar.download_button("Download CNN Sample", f, file_name="cnn_sample.zip")
+
+st.sidebar.markdown(
+    """
+    🔗 [Click here to access the CNN sample dataset](https://github.com/Charmve/Surface-Defect-Detection/tree/master/Magnetic-Tile-Defect)
+
+    Dataset Source: Charmve / Surface-Defect-Detection
+    """,
+    unsafe_allow_html=True
+)
