@@ -4,7 +4,7 @@ import ann_gui
 # Sidebar sample data section
 st.sidebar.title("📥 Sample Data")
 # Download button for ANN_trainX.csv
-with open("sample_data/NN_trainX.csv", "rb") as f:
+with open("sample_data/ANN_trainX.csv", "rb") as f:
     st.sidebar.download_button("Download ANN Training Input (X)", f, file_name="ANN_trainX.csv")
 
 # Download button for ANN_trainY.csv
