@@ -3,15 +3,13 @@ import ann_gui
 
 # Sidebar sample data section
 st.sidebar.title("📥 Sample Data")
-st.sidebar.markdown(
-    "Download sample training files:"
-)
-st.sidebar.markdown(
-    "- [🔗 ANN_trainX.csv](https://github.com/abhipm0202/ml-app-launcher-clean/blob/main/sample_data/ANN_trainX.csv)"
-)
-st.sidebar.markdown(
-    "- [🔗 ANN_trainY.csv](https://github.com/abhipm0202/ml-app-launcher-clean/blob/main/sample_data/ANN_trainY.csv)"
-)
+# Download button for ANN_trainX.csv
+with open("sample_data/ann_sample.csv", "rb") as f:
+    st.sidebar.download_button("Download ANN Training Input (X)", f, file_name="ANN_trainX.csv")
+
+# Download button for ANN_trainY.csv
+with open("sample_data/ann_sample_y.csv", "rb") as f:
+    st.sidebar.download_button("Download ANN Training Output (Y)", f, file_name="ANN_trainY.csv")
 
 # Run the actual ANN GUI
 ann_gui.run_ann_gui()
