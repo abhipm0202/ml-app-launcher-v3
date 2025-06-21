@@ -86,10 +86,14 @@ def run_cnn_gui():
             pred = model(tensor).argmax(dim=1).item()
         return class_names[pred], img
 
+    import tempfile
+
     def extract_zip(zip_file):
-        if os.path.exists(EXTRACT_DIR): shutil.rmtree(EXTRACT_DIR)
-        with zipfile.ZipFile(zip_file, "r") as z: z.extractall(EXTRACT_DIR)
+        EXTRACT_DIR = tempfile.mkdtemp()
+        with zipfile.ZipFile(zip_file, "r") as z:
+            z.extractall(EXTRACT_DIR)
         return EXTRACT_DIR
+
 
     # --- Header ---
 
