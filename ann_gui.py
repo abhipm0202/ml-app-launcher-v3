@@ -13,8 +13,8 @@ def run_ann_gui():
     st.set_page_config(page_title="Colab ANN Trainer", layout="wide")
 
     # Load logos
-    nmis_logo = Image.open("nmis_logo.png")
-    d3m_logo = Image.open("d3mcolab_logo.png")
+    nmis_logo = Image.open("assets/nmis_logo.png")
+    d3m_logo = Image.open("assets/d3mcolab_logo.png")
 
     # Layout for logos and title
     col1, col2, col3 = st.columns([1, 3, 1])
