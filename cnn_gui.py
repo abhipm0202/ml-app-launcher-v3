@@ -95,8 +95,6 @@ def run_cnn_gui():
         return EXTRACT_DIR
 
 
-    # --- Header ---
-
 
     # --- Header ---
     st.markdown(
