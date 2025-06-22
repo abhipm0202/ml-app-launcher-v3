@@ -239,18 +239,20 @@ def run_cnn_gui():
         save_name = st.text_input("💾 Save trained model as (no extension):", default_name)
 
         if st.button("Save Trained Model"):
-            model_path = f"{save_name}.pt"
+            import tempfile
+            temp_dir = tempfile.gettempdir()
+            model_path = os.path.join(temp_dir, f"{save_name}.pt")
             torch.save(st.session_state.trained_model, model_path)
             st.session_state.model_saved = True
             st.session_state.model_path = model_path
             st.success(f"✅ Model saved as {model_path}")
 
         if st.session_state.get("model_saved", False) and os.path.exists(st.session_state.model_path):
-            with open(st.session_state.model_path, "rb") as f:
+            with open(model_path, "rb") as f:
                 st.download_button(
                     label="📥 Download Trained Model",
                     data=f,
-                    file_name=st.session_state.model_path,
+                    file_name=f"{save_name}.pt",
                     mime="application/octet-stream"
                 )
 
