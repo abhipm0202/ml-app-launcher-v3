@@ -30,12 +30,21 @@ def run_ann_gui():
 
     # Sidebar for data upload
     st.sidebar.header("1. Load Data")
-    uploaded_x = st.sidebar.file_uploader("Upload X (Features) Excel File", type=["xlsx"])
-    uploaded_y = st.sidebar.file_uploader("Upload Y (Target) Excel File", type=["xlsx"])
+    uploaded_x = st.sidebar.file_uploader("Upload X (Features) File", type=["csv", "xlsx"])
+    uploaded_y = st.sidebar.file_uploader("Upload Y (Target) File", type=["csv", "xlsx"])
+
 
     if uploaded_x and uploaded_y:
-        X = pd.read_excel(uploaded_x)
-        Y = pd.read_excel(uploaded_y)
+        if uploaded_x.name.endswith('.csv'):
+            X = pd.read_csv(uploaded_x)
+        else:
+            X = pd.read_excel(uploaded_x)
+
+        if uploaded_y.name.endswith('.csv'):
+            Y = pd.read_csv(uploaded_y)
+        else:
+            Y = pd.read_excel(uploaded_y)
+
 
         st.write("### Preview of X (features)")
         st.dataframe(X.head())

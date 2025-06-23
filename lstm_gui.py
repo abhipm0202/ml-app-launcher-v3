@@ -50,10 +50,13 @@ def run_lstm_gui():
         mode = st.radio("Mode", ["Train New Model", "Load Pretrained Model"])
 
         if mode == "Train New Model":
-            uploaded_file = st.file_uploader("Upload Training Excel (.xlsx)", type=["xlsx"])
+            uploaded_file = st.sidebar.file_uploader("Upload LSTM Time Series File", type=["csv", "xlsx"])
             if uploaded_file:
-                df = pd.read_excel(uploaded_file)
-                st.write("Columns:", df.columns.tolist())
+                if uploaded_file.name.endswith('.csv'):
+                    df = pd.read_csv(uploaded_file)
+                else:
+                    df = pd.read_excel(uploaded_file)
+
 
             sequence_length = st.number_input("Sequence Length", 5, 100, 10)
             forecast_horizon = st.number_input("Forecast Horizon (Steps Ahead)", 1, 20, 1)
