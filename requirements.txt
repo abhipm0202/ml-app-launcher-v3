@@ -7,7 +7,7 @@ seaborn
 openpyxl
 joblib
 Pillow
-
+streamlit-lottie
+requests
 torch==2.2.1
 torchvision==0.17.1
-streamlit-lottie
