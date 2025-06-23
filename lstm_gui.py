@@ -32,7 +32,28 @@ def run_lstm_gui():
         return np.array(xs), np.array(ys)
 
     st.set_page_config(layout="wide")
-    st.title("📊 LSTM Multivariate Time Series Forecaster")
+
+    from PIL import Image
+
+    # --- Load logos ---
+    nmis_logo = Image.open("assets/nmis_logo.png")
+    d3m_logo = Image.open("assets/d3mcolab_logo.png")
+
+    # --- Logo Header Layout ---
+    colA, colB, colC = st.columns([1, 3, 1])
+
+    with colA:
+        st.image(nmis_logo, use_column_width=True)
+
+    with colB:
+        st.markdown("<h1 style='text-align: center;'>LSTM Forecaster</h1>", unsafe_allow_html=True)
+        st.markdown("<h4 style='text-align: center;'>Developed by D3M Colab</h4>", unsafe_allow_html=True)
+
+    with colC:
+        st.image(d3m_logo, use_column_width=True)
+
+    st.markdown("---")
+
 
     col1, col2 = st.columns([1, 3])
 

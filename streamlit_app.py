@@ -29,14 +29,14 @@ lottie_json = load_lottieurl(lottie_url)
 col1, col2, col3 = st.columns([1, 3, 1])
 
 with col1:
-    st.image(nmis_logo, use_column_width=True)
+    st.image(nmis_logo, use_container_width=True)
 
 with col2:
     st.markdown("<h1 style='text-align: center;'>ML Toolkit</h1>", unsafe_allow_html=True)
     st.markdown("<h4 style='text-align: center;'>Developed by D3M Colab</h4>", unsafe_allow_html=True)
 
 with col3:
-    st.image(d3m_logo, use_column_width=True)
+    st.image(d3m_logo, use_container_width=True)
 
 st.markdown("---")
 
