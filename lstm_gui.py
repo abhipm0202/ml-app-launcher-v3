@@ -206,29 +206,41 @@ def run_lstm_gui():
                     except Exception as e:
                         st.error(f"Error: {e}")
 
-        # --- Save Block ---
+        
+        # --- Save Model (within col2) ---
         if st.session_state.get("trained_model_ready", False):
             st.markdown("---")
-            st.subheader("💾 Save Model")
+            st.header("💾 Save Trained Model")
 
             default_name = f"lstm_model_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            save_name = st.text_input("Filename (no extension):", default_name)
+            save_name = st.text_input("Filename (no extension):", default_name, key="lstm_save_name")
 
             if st.button("Save LSTM Model"):
-                model_path = f"/tmp/{save_name}.pt"
-                scaler_path = f"/tmp/{save_name}_scalers.pkl"
+                model_path = os.path.join("/tmp", f"{save_name}.pt")
+                scaler_path = os.path.join("/tmp", f"{save_name}_scalers.pkl")
+
                 try:
                     torch.save(st.session_state.trained_model.state_dict(), model_path)
                     joblib.dump((st.session_state.x_scaler, st.session_state.y_scaler), scaler_path)
                     st.session_state.model_path = model_path
                     st.session_state.scaler_path = scaler_path
                     st.session_state.model_saved = True
-                    st.success("✅ Model and scalers saved.")
+                    st.success(f"✅ Model saved as {os.path.basename(model_path)} and scalers.")
                 except Exception as e:
                     st.error(f"❌ Save failed: {e}")
 
-            if st.session_state.get("model_saved", False):
-                with open(st.session_state.model_path, "rb") as f:
-                    st.download_button("📥 Download Model (.pt)", f, os.path.basename(model_path), mime="application/octet-stream")
-                with open(st.session_state.scaler_path, "rb") as f:
-                    st.download_button("📥 Download Scalers (.pkl)", f, os.path.basename(scaler_path), mime="application/octet-stream")
+            # Only show download buttons if paths are set
+            model_path = st.session_state.get("model_path")
+            scaler_path = st.session_state.get("scaler_path")
+
+            if model_path and os.path.exists(model_path):
+                with open(model_path, "rb") as f:
+                    st.download_button("📥 Download Model (.pt)", data=f,
+                                    file_name=os.path.basename(model_path),
+                                    mime="application/octet-stream")
+
+            if scaler_path and os.path.exists(scaler_path):
+                with open(scaler_path, "rb") as f:
+                    st.download_button("📥 Download Scalers (.pkl)", data=f,
+                                    file_name=os.path.basename(scaler_path),
+                                    mime="application/octet-stream")
