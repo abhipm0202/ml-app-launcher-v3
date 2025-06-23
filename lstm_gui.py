@@ -9,13 +9,10 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error, r2_score
 import joblib
 from datetime import datetime
-
+import os
 
 def run_lstm_gui():
 
-    # ------------------------------
-    # LSTM Model
-    # ------------------------------
     class LSTMModel(nn.Module):
         def __init__(self, input_size, hidden_size, num_layers, output_size):
             super(LSTMModel, self).__init__()
@@ -27,9 +24,6 @@ def run_lstm_gui():
             out = self.fc(out[:, -1, :])
             return out
 
-    # ------------------------------
-    # Create Sequences (Multivariate, Multi-step)
-    # ------------------------------
     def create_sequences_multivariate(X_data, y_data, seq_len, pred_len):
         xs, ys = [], []
         for i in range(len(X_data) - seq_len - pred_len + 1):
@@ -37,9 +31,6 @@ def run_lstm_gui():
             ys.append(y_data[i+seq_len:i+seq_len+pred_len].flatten())
         return np.array(xs), np.array(ys)
 
-    # ------------------------------
-    # Streamlit App
-    # ------------------------------
     st.set_page_config(layout="wide")
     st.title("📊 LSTM Multivariate Time Series Forecaster")
 
@@ -48,96 +39,91 @@ def run_lstm_gui():
     with col1:
         st.header("Configuration")
         mode = st.radio("Mode", ["Train New Model", "Load Pretrained Model"])
+
         if mode == "Train New Model":
             uploaded_file = st.sidebar.file_uploader("Upload LSTM Time Series File", type=["csv", "xlsx"])
             if uploaded_file:
-                if uploaded_file.name.endswith('.csv'):
-                    df = pd.read_csv(uploaded_file)
-                else:
-                    df = pd.read_excel(uploaded_file)
+                df = pd.read_csv(uploaded_file) if uploaded_file.name.endswith(".csv") else pd.read_excel(uploaded_file)
 
+                sequence_length = st.number_input("Sequence Length", 5, 100, 10)
+                forecast_horizon = st.number_input("Forecast Horizon (Steps Ahead)", 1, 20, 1)
+                epochs = st.number_input("Epochs", 10, 500, 100)
+                lr = st.number_input("Learning Rate", 0.0001, 0.1, 0.01)
+                hidden_size = st.number_input("Hidden Size", 10, 200, 50)
+                num_layers = st.slider("LSTM Layers", 1, 3, 1)
 
-            sequence_length = st.number_input("Sequence Length", 5, 100, 10)
-            forecast_horizon = st.number_input("Forecast Horizon (Steps Ahead)", 1, 20, 1)
-            epochs = st.number_input("Epochs", 10, 500, 100)
-            lr = st.number_input("Learning Rate", 0.0001, 0.1, 0.01)
-            hidden_size = st.number_input("Hidden Size", 10, 200, 50)
-            num_layers = st.slider("LSTM Layers", 1, 3, 1)
+                optimizer_choice = st.selectbox("Training Algorithm", ["Adam", "SGD", "RMSprop"])
+                loss_choice = st.selectbox("Loss Function", ["MSE", "MAE"])
 
-            optimizer_choice = st.selectbox("Training Algorithm", ["Adam", "SGD", "RMSprop"])
-            loss_choice = st.selectbox("Loss Function", ["MSE", "MAE"])
+                input_columns = st.multiselect("Input Feature Columns", df.columns.tolist())
+                target_column = st.selectbox("Target Column", df.columns.tolist())
 
-            input_columns = st.multiselect("Input Feature Columns", df.columns.tolist() if uploaded_file else [])
-            target_column = st.selectbox("Target Column", df.columns.tolist() if uploaded_file else [])
+                if st.button("Train Model"):
+                    X_raw = df[input_columns].values
+                    y_raw = df[[target_column]].values
 
-            if st.button("Train Model") and uploaded_file:
-                X_raw = df[input_columns].values
-                y_raw = df[[target_column]].values
+                    x_scaler = MinMaxScaler()
+                    y_scaler = MinMaxScaler()
+                    X_scaled = x_scaler.fit_transform(X_raw)
+                    y_scaled = y_scaler.fit_transform(y_raw)
 
-                x_scaler = MinMaxScaler()
-                y_scaler = MinMaxScaler()
-                X_scaled = x_scaler.fit_transform(X_raw)
-                y_scaled = y_scaler.fit_transform(y_raw)
+                    X_seq, y_seq = create_sequences_multivariate(X_scaled, y_scaled, sequence_length, forecast_horizon)
+                    X_tensor = torch.tensor(X_seq, dtype=torch.float32)
+                    y_tensor = torch.tensor(y_seq, dtype=torch.float32)
 
-                X_seq, y_seq = create_sequences_multivariate(X_scaled, y_scaled, sequence_length, forecast_horizon)
+                    train_size = int(0.8 * len(X_tensor))
+                    X_train, X_test = X_tensor[:train_size], X_tensor[train_size:]
+                    y_train, y_test = y_tensor[:train_size], y_tensor[train_size:]
 
-                X_tensor = torch.tensor(X_seq, dtype=torch.float32)
-                y_tensor = torch.tensor(y_seq, dtype=torch.float32)
+                    model = LSTMModel(len(input_columns), hidden_size, num_layers, forecast_horizon)
 
-                train_size = int(0.8 * len(X_tensor))
-                X_train, X_test = X_tensor[:train_size], X_tensor[train_size:]
-                y_train, y_test = y_tensor[:train_size], y_tensor[train_size:]
+                    criterion = nn.MSELoss() if loss_choice == "MSE" else nn.L1Loss()
+                    optimizer = {
+                        "Adam": optim.Adam,
+                        "SGD": optim.SGD,
+                        "RMSprop": optim.RMSprop
+                    }[optimizer_choice](model.parameters(), lr=lr)
 
-                model = LSTMModel(len(input_columns), hidden_size, num_layers, forecast_horizon)
+                    train_losses = []
+                    for epoch in range(epochs):
+                        model.train()
+                        optimizer.zero_grad()
+                        output = model(X_train)
+                        loss = criterion(output, y_train)
+                        loss.backward()
+                        optimizer.step()
+                        train_losses.append(loss.item())
 
-                # Loss and optimizer
-                criterion = nn.MSELoss() if loss_choice == "MSE" else nn.L1Loss()
-                optimizer = {
-                    "Adam": optim.Adam,
-                    "SGD": optim.SGD,
-                    "RMSprop": optim.RMSprop
-                }[optimizer_choice](model.parameters(), lr=lr)
+                    model.eval()
+                    with torch.no_grad():
+                        preds = model(X_test).numpy()
 
-                train_losses = []
-                for epoch in range(epochs):
-                    model.train()
-                    optimizer.zero_grad()
-                    output = model(X_train)
-                    loss = criterion(output, y_train)
-                    loss.backward()
-                    optimizer.step()
-                    train_losses.append(loss.item())
+                    preds_inv = y_scaler.inverse_transform(preds)
+                    actual_inv = y_scaler.inverse_transform(y_test.numpy())
 
-                model.eval()
-                with torch.no_grad():
-                    preds = model(X_test).numpy()
+                    st.session_state.trained_model = model
+                    st.session_state.x_scaler = x_scaler
+                    st.session_state.y_scaler = y_scaler
+                    st.session_state.sequence_length = sequence_length
+                    st.session_state.forecast_horizon = forecast_horizon
+                    st.session_state.input_columns = input_columns
+                    st.session_state.trained_model_ready = True
 
-                preds_inv = y_scaler.inverse_transform(preds)
-                actual_inv = y_scaler.inverse_transform(y_test.numpy())
+                    with col2:
+                        fig1, ax1 = plt.subplots()
+                        ax1.plot(train_losses)
+                        ax1.set_title("Training Loss")
+                        st.pyplot(fig1)
 
-                st.session_state.trained_model = model
-                st.session_state.x_scaler = x_scaler
-                st.session_state.y_scaler = y_scaler
-                st.session_state.sequence_length = sequence_length
-                st.session_state.forecast_horizon = forecast_horizon
-                st.session_state.input_columns = input_columns
-                st.session_state.trained_model_ready = True
+                        fig2, ax2 = plt.subplots()
+                        ax2.plot(actual_inv[:, 0], label="Actual")
+                        ax2.plot(preds_inv[:, 0], label="Predicted")
+                        ax2.set_title("Validation (first step only)")
+                        ax2.legend()
+                        st.pyplot(fig2)
 
-                with col2:
-                    fig1, ax1 = plt.subplots()
-                    ax1.plot(train_losses)
-                    ax1.set_title("Training Loss")
-                    st.pyplot(fig1)
-
-                    fig2, ax2 = plt.subplots()
-                    ax2.plot(actual_inv[:, 0], label="Actual")
-                    ax2.plot(preds_inv[:, 0], label="Predicted")
-                    ax2.set_title("Validation (first step only)")
-                    ax2.legend()
-                    st.pyplot(fig2)
-
-                    st.write(f"**MSE:** {mean_squared_error(actual_inv, preds_inv):.4f}")
-                    st.write(f"**R² Score:** {r2_score(actual_inv, preds_inv):.4f}")
+                        st.write(f"**MSE:** {mean_squared_error(actual_inv, preds_inv):.4f}")
+                        st.write(f"**R² Score:** {r2_score(actual_inv, preds_inv):.4f}")
 
         else:
             model_file = st.file_uploader("Upload Model (.pt)", type=["pt"])
@@ -163,63 +149,16 @@ def run_lstm_gui():
                 st.session_state.trained_model_ready = True
                 st.success("Pretrained model and scalers loaded.")
 
-    # --- Save/Download After Training ---
-    from datetime import datetime
-    import io
-
-
-# --- Save Model Block (Outside col2) ---
-if st.session_state.get("trained_model_ready", False):
-    default_name = f"lstm_model_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    save_name = st.text_input("💾 Save trained model as (no extension):", default_name)
-
-    if st.button("Save Trained Model"):
-        model_path = os.path.join("/tmp", f"{save_name}.pt")
-        scaler_path = os.path.join("/tmp", f"{save_name}_scalers.pkl")
-
-        try:
-            torch.save(st.session_state.trained_model.state_dict(), model_path)
-            joblib.dump((st.session_state.x_scaler, st.session_state.y_scaler), scaler_path)
-
-            st.session_state.model_path = model_path
-            st.session_state.scaler_path = scaler_path
-            st.session_state.model_saved = True
-            st.success(f"✅ Model saved: {os.path.basename(model_path)} and {os.path.basename(scaler_path)}")
-        except Exception as e:
-            st.error(f"❌ Save failed: {e}")
-
-    if st.session_state.get("model_saved", False):
-        if os.path.exists(st.session_state.model_path):
-            with open(st.session_state.model_path, "rb") as f:
-                st.download_button(
-                    label="📥 Download Trained Model",
-                    data=f,
-                    file_name=os.path.basename(st.session_state.model_path),
-                    mime="application/octet-stream"
-                )
-
-        if os.path.exists(st.session_state.scaler_path):
-            with open(st.session_state.scaler_path, "rb") as f:
-                st.download_button(
-                    label="📥 Download Scalers",
-                    data=f,
-                    file_name=os.path.basename(st.session_state.scaler_path),
-                    mime="application/octet-stream"
-                )
-
-
-    # ------------------------------
-    # Validation Panel
-    # ------------------------------
+    # --- Validation Panel ---
     with col2:
         st.header("🔎 Validate Model")
 
         if st.session_state.get("trained_model"):
-            method = st.radio("Validation Input", ["Manual Entry", "Upload Excel"])
+            method = st.radio("Validation Input", ["Manual Entry", "Upload Excel or CSV"])
 
             if method == "Manual Entry":
                 val_input = st.text_area("Enter values (comma-separated rows):",
-                                        placeholder="e.g., 1.0,2.0,3.0\n4.0,5.0,6.0")
+                                         placeholder="e.g., 1.0,2.0,3.0\n4.0,5.0,6.0")
                 if st.button("Validate (Manual)") and val_input:
                     try:
                         lines = val_input.strip().split("\n")
@@ -237,13 +176,10 @@ if st.session_state.get("trained_model_ready", False):
                     except Exception as e:
                         st.error(f"Error: {e}")
 
-            elif method == "Upload Excel":
+            elif method == "Upload Excel or CSV":
                 val_file = st.file_uploader("Upload Validation File", type=["xlsx", "csv"], key="val_upload")
                 if val_file:
-                    if val_file.name.endswith('.csv'):
-                        df_val = pd.read_csv(val_file)
-                    else:
-                        df_val = pd.read_excel(val_file)
+                    df_val = pd.read_csv(val_file) if val_file.name.endswith(".csv") else pd.read_excel(val_file)
                     try:
                         values = df_val[st.session_state.input_columns].values
                         if len(values) < st.session_state.sequence_length:
@@ -258,3 +194,37 @@ if st.session_state.get("trained_model_ready", False):
                             st.success(f"Prediction (next {st.session_state.forecast_horizon} steps): {pred_inv.flatten()}")
                     except Exception as e:
                         st.error(f"Error: {e}")
+
+        # --- Save Model (within col2) ---
+        if st.session_state.get("trained_model_ready", False):
+            st.markdown("---")
+            st.header("💾 Save Trained Model")
+
+            default_name = f"lstm_model_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            save_name = st.text_input("Filename (no extension):", default_name, key="lstm_save_name")
+
+            if st.button("Save LSTM Model"):
+                model_path = os.path.join("/tmp", f"{save_name}.pt")
+                scaler_path = os.path.join("/tmp", f"{save_name}_scalers.pkl")
+
+                try:
+                    torch.save(st.session_state.trained_model.state_dict(), model_path)
+                    joblib.dump((st.session_state.x_scaler, st.session_state.y_scaler), scaler_path)
+                    st.session_state.model_path = model_path
+                    st.session_state.scaler_path = scaler_path
+                    st.session_state.model_saved = True
+                    st.success(f"✅ Model saved as {os.path.basename(model_path)} and scalers.")
+                except Exception as e:
+                    st.error(f"❌ Save failed: {e}")
+
+            if st.session_state.get("model_saved", False):
+                if os.path.exists(st.session_state.model_path):
+                    with open(st.session_state.model_path, "rb") as f:
+                        st.download_button("📥 Download Model (.pt)", data=f,
+                                           file_name=os.path.basename(st.session_state.model_path),
+                                           mime="application/octet-stream")
+                if os.path.exists(st.session_state.scaler_path):
+                    with open(st.session_state.scaler_path, "rb") as f:
+                        st.download_button("📥 Download Scalers (.pkl)", data=f,
+                                           file_name=os.path.basename(st.session_state.scaler_path),
+                                           mime="application/octet-stream")
