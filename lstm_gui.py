@@ -167,34 +167,43 @@ def run_lstm_gui():
     from datetime import datetime
     import io
 
-    # --- Save Model Block (Outside col2) ---
-    if st.session_state.get("trained_model_ready", False):
-        default_name = f"lstm_model_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        save_name = st.text_input("💾 Save trained model as (no extension):", default_name)
 
-        if st.button("Save Trained Model"):
-            model_path = f"{save_name}.pt"
-            scaler_path = "scalers.pkl"
+# --- Save Model Block (Outside col2) ---
+if st.session_state.get("trained_model_ready", False):
+    default_name = f"lstm_model_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    save_name = st.text_input("💾 Save trained model as (no extension):", default_name)
+
+    if st.button("Save Trained Model"):
+        model_path = os.path.join("/tmp", f"{save_name}.pt")
+        scaler_path = os.path.join("/tmp", f"{save_name}_scalers.pkl")
+
+        try:
             torch.save(st.session_state.trained_model.state_dict(), model_path)
             joblib.dump((st.session_state.x_scaler, st.session_state.y_scaler), scaler_path)
+
             st.session_state.model_path = model_path
             st.session_state.scaler_path = scaler_path
             st.session_state.model_saved = True
-            st.success(f"✅ Model saved as {model_path} and {scaler_path}")
+            st.success(f"✅ Model saved: {os.path.basename(model_path)} and {os.path.basename(scaler_path)}")
+        except Exception as e:
+            st.error(f"❌ Save failed: {e}")
 
-        if st.session_state.get("model_saved", False):
+    if st.session_state.get("model_saved", False):
+        if os.path.exists(st.session_state.model_path):
             with open(st.session_state.model_path, "rb") as f:
                 st.download_button(
                     label="📥 Download Trained Model",
                     data=f,
-                    file_name=st.session_state.model_path,
+                    file_name=os.path.basename(st.session_state.model_path),
                     mime="application/octet-stream"
                 )
+
+        if os.path.exists(st.session_state.scaler_path):
             with open(st.session_state.scaler_path, "rb") as f:
                 st.download_button(
                     label="📥 Download Scalers",
                     data=f,
-                    file_name=st.session_state.scaler_path,
+                    file_name=os.path.basename(st.session_state.scaler_path),
                     mime="application/octet-stream"
                 )
 
@@ -229,9 +238,12 @@ def run_lstm_gui():
                         st.error(f"Error: {e}")
 
             elif method == "Upload Excel":
-                val_file = st.file_uploader("Upload Excel for Validation", type=["xlsx"], key="val_upload")
+                val_file = st.file_uploader("Upload Validation File", type=["xlsx", "csv"], key="val_upload")
                 if val_file:
-                    df_val = pd.read_excel(val_file)
+                    if val_file.name.endswith('.csv'):
+                        df_val = pd.read_csv(val_file)
+                    else:
+                        df_val = pd.read_excel(val_file)
                     try:
                         values = df_val[st.session_state.input_columns].values
                         if len(values) < st.session_state.sequence_length:
@@ -246,5 +258,3 @@ def run_lstm_gui():
                             st.success(f"Prediction (next {st.session_state.forecast_horizon} steps): {pred_inv.flatten()}")
                     except Exception as e:
                         st.error(f"Error: {e}")
-        else:
-            st.info("Please train or load a model first.")
