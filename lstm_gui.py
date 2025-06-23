@@ -48,7 +48,6 @@ def run_lstm_gui():
     with col1:
         st.header("Configuration")
         mode = st.radio("Mode", ["Train New Model", "Load Pretrained Model"])
-
         if mode == "Train New Model":
             uploaded_file = st.sidebar.file_uploader("Upload LSTM Time Series File", type=["csv", "xlsx"])
             if uploaded_file:

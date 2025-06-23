@@ -132,14 +132,21 @@ def run_ann_gui():
                     st.error(f"Prediction error: {e}")
 
         with st.expander("Predict from Excel File"):
-            test_file = st.file_uploader("Upload Test X File", type=["xlsx"])
+            test_file = st.file_uploader("Upload Test X File", type=["xlsx", "csv"])
             if st.button("Predict from Excel") and test_file:
                 try:
                     model = st.session_state.get('model', None)
                     if model:
-                        test_X = pd.read_excel(test_file)
+                        if test_file.name.endswith(".csv"):
+                            test_X = pd.read_csv(test_file)
+                        else:
+                            test_X = pd.read_excel(test_file)
+
                         predictions = model.predict(test_X.values)
-                        pred_df = pd.DataFrame(predictions, columns=[f"Y_Pred_{i+1}" for i in range(predictions.shape[1])] if predictions.ndim > 1 else ["Y_Pred"])
+                        pred_df = pd.DataFrame(
+                            predictions,
+                            columns=[f"Y_Pred_{i+1}" for i in range(predictions.shape[1])] if predictions.ndim > 1 else ["Y_Pred"]
+                        )
                         st.write(pred_df)
                         csv = pred_df.to_csv(index=False).encode("utf-8")
                         st.download_button("Download Predictions as CSV", csv, "predictions.csv", "text/csv")
@@ -147,3 +154,4 @@ def run_ann_gui():
                         st.error("Please train the model first.")
                 except Exception as e:
                     st.error(f"Prediction error: {e}")
+
